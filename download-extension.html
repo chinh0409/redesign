@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tải AI Screen Crop Extension</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+            max-width: 600px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .description {
+            font-size: 18px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+        
+        .download-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            margin: 10px;
+        }
+        
+        .download-btn:hover {
+            background: linear-gradient(45deg, #45a049, #4CAF50);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .manual-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+        }
+        
+        .manual-btn:hover {
+            background: linear-gradient(45deg, #ee5a52, #ff6b6b);
+        }
+        
+        .file-info {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .step {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: left;
+        }
+        
+        .step-number {
+            background: #4CAF50;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .manual-section {
+            margin-top: 40px;
+            display: none;
+        }
+        
+        .show-manual {
+            display: block;
+        }
+        
+        pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            text-align: left;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ AI Screen Crop Extension</h1>
+        <div class="description">
+            Extension Chrome để crop ảnh từ màn hình và phân tích bằng OpenAI.<br>
+            Đã khắc phục tất cả các vấn đề và cải thiện giao diện.
+        </div>
+        
+        <div class="file-info">
+            <strong>📦 File: ai-screen-crop-extension.zip</strong><br>
+            <strong>📏 Kích thước: ~71KB</strong><br>
+            <strong>📅 Phiên bản: 1.0 (Updated)</strong>
+        </div>
+        
+        <button id="downloadBtn" class="download-btn">
+            ⬇️ Tải Extension (.zip)
+        </button>
+        
+        <br>
+        
+        <button id="showManualBtn" class="download-btn manual-btn">
+            📋 Tạo File Thủ Công
+        </button>
+        
+        <div id="manualSection" class="manual-section">
+            <h3>🛠️ Cách Tạo Extension Thủ Công:</h3>
+            
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>Tạo thư mục mới</strong> (ví dụ: ai-screen-crop-extension)
+            </div>
+            
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>Copy các file sau</strong> vào thư mục đó từ workspace hiện tại:
+                <ul>
+                    <li>manifest.json</li>
+                    <li>popup.html</li>
+                    <li>popup.js</li>
+                    <li>background.js</li>
+                    <li>content.js</li>
+                    <li>content.css</li>
+                    <li>Thư mục icon/ (với 3 file icon)</li>
+                    <li>Thư mục libs/ (với html2canvas.min.js)</li>
+                </ul>
+            </div>
+            
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>Cài đặt trong Chrome:</strong><br>
+                chrome://extensions/ → Developer mode → Load unpacked
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px; font-size: 14px; opacity: 0.8;">
+            💡 Sau khi tải về, tham khảo file <strong>HUONG_DAN_SU_DUNG.md</strong> để biết cách sử dụng
+        </div>
+    </div>
+
+    <script>
+        // Base64 encoded zip file data will be inserted here
+        const base64Data = ""; // Placeholder - will be populated by script
+        
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            if (!base64Data) {
+                alert('Đang chuẩn bị file download. Vui lòng sử dụng phương pháp tạo thủ công ở dưới.');
+                return;
+            }
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.href = 'data:application/zip;base64,' + base64Data;
+            link.download = 'ai-screen-crop-extension.zip';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+        
+        document.getElementById('showManualBtn').addEventListener('click', function() {
+            const section = document.getElementById('manualSection');
+            section.classList.toggle('show-manual');
+            
+            const btn = document.getElementById('showManualBtn');
+            if (section.classList.contains('show-manual')) {
+                btn.textContent = '🔙 Ẩn Hướng Dẫn';
+            } else {
+                btn.textContent = '📋 Tạo File Thủ Công';
+            }
+        });
+    </script>
+</body>
+</html>

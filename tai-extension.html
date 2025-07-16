@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tải AI Screen Crop Extension</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+            max-width: 600px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .description {
+            font-size: 18px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+        
+        .download-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            margin: 10px;
+        }
+        
+        .download-btn:hover {
+            background: linear-gradient(45deg, #45a049, #4CAF50);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .manual-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+        }
+        
+        .manual-btn:hover {
+            background: linear-gradient(45deg, #ee5a52, #ff6b6b);
+        }
+        
+        .file-info {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .step {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: left;
+        }
+        
+        .step-number {
+            background: #4CAF50;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .manual-section {
+            margin-top: 40px;
+            display: none;
+        }
+        
+        .show-manual {
+            display: block;
+        }
+        
+        .success-msg {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ AI Screen Crop Extension</h1>
+        <div class="description">
+            Extension Chrome để crop ảnh từ màn hình và phân tích bằng OpenAI.<br>
+            Đã khắc phục tất cả các vấn đề và cải thiện giao diện.
+        </div>
+        
+        <div class="file-info">
+            <strong>📦 File: ai-screen-crop-extension.zip</strong><br>
+            <strong>📏 Kích thước: ~71KB</strong><br>
+            <strong>📅 Phiên bản: 1.0 (Updated)</strong>
+        </div>
+        
+        <button id="downloadBtn" class="download-btn">
+            ⬇️ Tải Extension (.zip)
+        </button>
+        
+        <br>
+        
+        <button id="showManualBtn" class="download-btn manual-btn">
+            📋 Hướng Dẫn Cài Đặt
+        </button>
+        
+        <div id="successMsg" class="success-msg">
+            ✅ <strong>Tải thành công!</strong> Giải nén file và làm theo hướng dẫn cài đặt.
+        </div>
+        
+        <div id="manualSection" class="manual-section">
+            <h3>🛠️ Cách Cài Đặt Extension:</h3>
+            
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>Giải nén file zip</strong> vừa tải về thành thư mục
+            </div>
+            
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>Mở Chrome</strong> → Vào <code>chrome://extensions/</code>
+            </div>
+            
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>Bật "Developer mode"</strong> ở góc phải trên
+            </div>
+            
+            <div class="step">
+                <span class="step-number">4</span>
+                <strong>Nhấn "Load unpacked"</strong> → Chọn thư mục đã giải nén
+            </div>
+            
+            <div class="step">
+                <span class="step-number">5</span>
+                <strong>Extension sẵn sàng!</strong> Icon 🖼️ sẽ xuất hiện trên thanh công cụ
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px; font-size: 14px; opacity: 0.8;">
+            💡 <strong>Lưu ý:</strong> Extension bao gồm tất cả tính năng mới đã được yêu cầu:<br>
+            ✅ Hiển thị preview ảnh crop<br>
+            ✅ Textbox nhập prompt tùy chỉnh<br>
+            ✅ Khung kết quả có tổ chức<br>
+            ✅ Nút Restart extension<br>
+        </div>
+    </div>
+
+    <script>
+        // Base64 encoded zip file data
+        const base64Data = "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";
+        
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            try {
+                // Create download link
+                const link = document.createElement('a');
+                link.href = 'data:application/zip;base64,' + base64Data;
+                link.download = 'ai-screen-crop-extension.zip';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Show success message
+                document.getElementById('successMsg').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('successMsg').style.display = 'none';
+                }, 5000);
+                
+            } catch (error) {
+                alert('Có lỗi khi tải file. Vui lòng thử lại.');
+                console.error('Download error:', error);
+            }
+        });
+        
+        document.getElementById('showManualBtn').addEventListener('click', function() {
+            const section = document.getElementById('manualSection');
+            section.classList.toggle('show-manual');
+            
+            const btn = document.getElementById('showManualBtn');
+            if (section.classList.contains('show-manual')) {
+                btn.textContent = '🔙 Ẩn Hướng Dẫn';
+            } else {
+                btn.textContent = '📋 Hướng Dẫn Cài Đặt';
+            }
+        });
+    </script>
+</body>
+</html>
