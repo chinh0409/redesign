@@ -18,7 +18,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const apiKeyInput = document.getElementById('apiKey');
     const cropBtn = document.getElementById('cropBtn');
     const clearBtn = document.getElementById('clearBtn');
-    const imageIndicator = document.getElementById('imageIndicator');
+    const restartBtn = document.getElementById('restartBtn');
+    const actionButtons = document.getElementById('actionButtons');
+    const imagePreviewSection = document.getElementById('imagePreviewSection');
+    const imagePreview = document.getElementById('imagePreview');
+    const imageInfo = document.getElementById('imageInfo');
+    const promptSection = document.getElementById('promptSection');
+    const promptText = document.getElementById('promptText');
+    const analyzeBtn = document.getElementById('analyzeBtn');
     const statusDiv = document.getElementById('status');
     const chatContainer = document.getElementById('chatContainer');
     const messagesDiv = document.getElementById('messages');
@@ -46,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
     chrome.storage.local.get(['currentImageBase64', 'conversationHistory'], function(result) {
         if (result.currentImageBase64) {
             currentImageBase64 = result.currentImageBase64;
-            imageIndicator.style.display = 'block';
+            displayImagePreview(currentImageBase64);
             console.log('Restored image from storage');
         }
         if (result.conversationHistory && result.conversationHistory.length > 0) {
@@ -122,6 +129,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Analyze button click
+    analyzeBtn.addEventListener('click', function() {
+        if (!checkExtensionContext()) return;
+        
+        if (!currentImageBase64) {
+            showStatus('Không có ảnh để phân tích', 'error');
+            return;
+        }
+        
+        const prompt = promptText.value.trim();
+        if (!prompt) {
+            showStatus('Vui lòng nhập prompt!', 'error');
+            return;
+        }
+        
+        showStatus('Đang gửi ảnh lên OpenAI...', 'loading');
+        sendToOpenAI(currentImageBase64, prompt);
+    });
+
     // Send follow-up message
     sendBtn.addEventListener('click', function() {
         const message = followUpText.value.trim();
@@ -142,6 +168,13 @@ document.addEventListener('DOMContentLoaded', function() {
     clearBtn.addEventListener('click', function() {
         if (confirm('Bạn có chắc chắn muốn xóa cuộc hội thoại và bắt đầu lại?')) {
             clearConversation();
+        }
+    });
+
+    // Restart extension button
+    restartBtn.addEventListener('click', function() {
+        if (confirm('Restart extension sẽ tải lại toàn bộ extension. Bạn có chắc chắn?')) {
+            restartExtension();
         }
     });
 
@@ -175,13 +208,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         currentImageBase64 = imageData;
-        imageIndicator.style.display = 'block';
+        displayImagePreview(imageData);
+        
         // Save image to storage immediately
         saveStateToStorage();
         
-        showStatus('Đang gửi ảnh lên OpenAI...', 'loading');
+        showStatus('✅ Đã crop ảnh thành công! Nhập prompt và nhấn "Phân Tích Ảnh".', 'success');
+    }
+
+    function displayImagePreview(imageData) {
+        imagePreview.src = `data:image/png;base64,${imageData}`;
+        imagePreviewSection.style.display = 'block';
+        promptSection.style.display = 'block';
+        actionButtons.style.display = 'block';
         
-        sendToOpenAI(imageData, "Hãy mô tả chi tiết những gì bạn nhìn thấy trong ảnh này.");
+        // Calculate and display image info
+        const img = new Image();
+        img.onload = function() {
+            const sizeKB = Math.round((imageData.length * 3/4) / 1024);
+            imageInfo.textContent = `Kích thước: ${img.width}x${img.height}px • Dung lượng: ${sizeKB}KB`;
+        };
+        img.src = `data:image/png;base64,${imageData}`;
     }
 
     async function sendToOpenAI(imageData, userMessage) {
@@ -256,16 +303,15 @@ document.addEventListener('DOMContentLoaded', function() {
             // Save updated conversation to storage
             saveStateToStorage();
             
-            showStatus('Thành công! Bạn có thể tiếp tục hội thoại.', 'success');
+            showStatus('✅ Phân tích thành công! Bạn có thể tiếp tục hỏi thêm.', 'success');
             
             // Show chat interface
             chatContainer.style.display = 'block';
             followUpDiv.style.display = 'block';
-            clearBtn.style.display = 'block';
             
         } catch (error) {
             console.error('Error calling OpenAI API:', error);
-            showStatus(`Lỗi: ${error.message}`, 'error');
+            showStatus(`❌ Lỗi: ${error.message}`, 'error');
         }
     }
 
@@ -314,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show chat interface
         chatContainer.style.display = 'block';
         followUpDiv.style.display = 'block';
-        clearBtn.style.display = 'block';
+        actionButtons.style.display = 'block';
     }
 
     function saveStateToStorage() {
@@ -341,6 +387,8 @@ document.addEventListener('DOMContentLoaded', function() {
             cropBtn.disabled = true;
             clearBtn.disabled = true;
             sendBtn.disabled = true;
+            analyzeBtn.disabled = true;
+            restartBtn.disabled = true;
             return false;
         }
     }
@@ -356,8 +404,12 @@ document.addEventListener('DOMContentLoaded', function() {
         messagesDiv.innerHTML = '';
         chatContainer.style.display = 'none';
         followUpDiv.style.display = 'none';
-        clearBtn.style.display = 'none';
-        imageIndicator.style.display = 'none';
+        actionButtons.style.display = 'none';
+        imagePreviewSection.style.display = 'none';
+        promptSection.style.display = 'none';
+        
+        // Reset prompt text to default
+        promptText.value = 'Hãy mô tả chi tiết những gì bạn nhìn thấy trong ảnh này.';
         
         // Clear storage
         try {
@@ -367,7 +419,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Reset status
-        showStatus('Đã xóa cuộc hội thoại. Sẵn sàng crop ảnh mới.', 'success');
+        showStatus('✅ Đã xóa cuộc hội thoại. Sẵn sàng crop ảnh mới.', 'success');
+    }
+
+    function restartExtension() {
+        if (!checkExtensionContext()) return;
+        
+        try {
+            // Clear all storage
+            chrome.storage.local.clear();
+            
+            // Reload the extension
+            chrome.runtime.reload();
+        } catch (error) {
+            console.error('Error restarting extension:', error);
+            showStatus('❌ Không thể restart extension. Vui lòng thử reload thủ công tại chrome://extensions/', 'error');
+        }
     }
 });
 

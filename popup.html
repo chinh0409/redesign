@@ -6,8 +6,8 @@
     <title>AI Screen Crop</title>
     <style>
         body {
-            width: 400px;
-            min-height: 500px;
+            width: 450px;
+            min-height: 600px;
             margin: 0;
             padding: 20px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -95,6 +95,14 @@
             background: linear-gradient(45deg, #ff7700, #ff9500);
         }
         
+        .restart-btn {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+        }
+        
+        .restart-btn:hover {
+            background: linear-gradient(45deg, #8e44ad, #9b59b6);
+        }
+        
         .chat-container {
             max-height: 300px;
             overflow-y: auto;
@@ -173,19 +181,78 @@
             background: linear-gradient(45deg, #45a049, #4CAF50);
         }
         
-        .image-indicator {
-            margin: 10px 0;
-            padding: 8px 12px;
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid rgba(76, 175, 80, 0.4);
-            border-radius: 6px;
-            text-align: center;
+        .image-preview-section {
+            margin: 15px 0;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
         }
         
-        .indicator-text {
+        .image-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto;
+            object-fit: contain;
+        }
+        
+        .image-info {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .prompt-section {
+            margin: 15px 0;
+        }
+        
+        .prompt-section textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-family: inherit;
             font-size: 14px;
-            color: #90EE90;
-            font-weight: 500;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        .prompt-section textarea::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .analyze-btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            margin-top: 10px;
+        }
+        
+        .analyze-btn:hover {
+            background: linear-gradient(45deg, #2980b9, #3498db);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .button-group button {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
         }
     </style>
 </head>
@@ -199,19 +266,33 @@
         </div>
         
         <button id="cropBtn" class="crop-btn">📸 Crop Ảnh Từ Màn Hình</button>
-        <button id="clearBtn" class="clear-btn" style="display: none;">🗑️ Bắt Đầu Mới</button>
         
-        <div id="imageIndicator" class="image-indicator" style="display: none;">
-            <div class="indicator-text">✅ Đã có ảnh được crop</div>
+        <div class="button-group" id="actionButtons" style="display: none;">
+            <button id="clearBtn" class="clear-btn">🗑️ Xóa</button>
+            <button id="restartBtn" class="restart-btn">🔄 Restart</button>
+        </div>
+        
+        <div id="imagePreviewSection" class="image-preview-section" style="display: none;">
+            <div class="section-title">📷 Ảnh đã crop:</div>
+            <img id="imagePreview" class="image-preview" alt="Cropped image preview">
+            <div id="imageInfo" class="image-info"></div>
+        </div>
+        
+        <div id="promptSection" class="prompt-section" style="display: none;">
+            <div class="section-title">💬 Prompt cho AI:</div>
+            <textarea id="promptText" placeholder="Nhập câu hỏi hoặc yêu cầu về ảnh này...">Hãy mô tả chi tiết những gì bạn nhìn thấy trong ảnh này.</textarea>
+            <button id="analyzeBtn" class="analyze-btn">🚀 Phân Tích Ảnh</button>
         </div>
         
         <div id="status"></div>
         
         <div id="chatContainer" class="chat-container" style="display: none;">
+            <div class="section-title">💬 Kết quả phân tích:</div>
             <div id="messages"></div>
         </div>
         
         <div id="followUp" class="follow-up" style="display: none;">
+            <div class="section-title">✨ Hỏi thêm:</div>
             <textarea id="followUpText" placeholder="Đặt câu hỏi hoặc yêu cầu thêm về ảnh..."></textarea>
             <button id="sendBtn" class="send-btn">💬 Gửi Tin Nhắn</button>
         </div>
