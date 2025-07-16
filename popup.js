@@ -4,6 +4,8 @@ let currentImageBase64 = null;
 document.addEventListener('DOMContentLoaded', function() {
     const apiKeyInput = document.getElementById('apiKey');
     const cropBtn = document.getElementById('cropBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const imageIndicator = document.getElementById('imageIndicator');
     const statusDiv = document.getElementById('status');
     const chatContainer = document.getElementById('chatContainer');
     const messagesDiv = document.getElementById('messages');
@@ -11,10 +13,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const followUpText = document.getElementById('followUpText');
     const sendBtn = document.getElementById('sendBtn');
 
-    // Load saved API key
+    // Load saved data
     chrome.storage.sync.get(['openai_api_key'], function(result) {
         if (result.openai_api_key) {
             apiKeyInput.value = result.openai_api_key;
+        }
+    });
+
+    // Load saved conversation and image
+    chrome.storage.local.get(['currentImageBase64', 'conversationHistory'], function(result) {
+        if (result.currentImageBase64) {
+            currentImageBase64 = result.currentImageBase64;
+            imageIndicator.style.display = 'block';
+            console.log('Restored image from storage');
+        }
+        if (result.conversationHistory && result.conversationHistory.length > 0) {
+            conversationHistory = result.conversationHistory;
+            console.log('Restored conversation history:', conversationHistory.length, 'messages');
+            
+            // Restore UI
+            restoreConversationUI();
+            showStatus('Đã khôi phục cuộc hội thoại trước đó', 'success');
         }
     });
 
@@ -82,6 +101,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Clear conversation button
+    clearBtn.addEventListener('click', function() {
+        if (confirm('Bạn có chắc chắn muốn xóa cuộc hội thoại và bắt đầu lại?')) {
+            clearConversation();
+        }
+    });
+
     // Listen for messages from content script
     chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         if (request.action === 'imageCropped') {
@@ -108,6 +134,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         currentImageBase64 = imageData;
+        imageIndicator.style.display = 'block';
+        // Save image to storage immediately
+        saveStateToStorage();
+        
         showStatus('Đang gửi ảnh lên OpenAI...', 'loading');
         
         sendToOpenAI(imageData, "Hãy mô tả chi tiết những gì bạn nhìn thấy trong ảnh này.");
@@ -182,11 +212,15 @@ document.addEventListener('DOMContentLoaded', function() {
             displayMessage(userMessage, 'user');
             displayMessage(aiResponse, 'ai');
             
+            // Save updated conversation to storage
+            saveStateToStorage();
+            
             showStatus('Thành công! Bạn có thể tiếp tục hội thoại.', 'success');
             
             // Show chat interface
             chatContainer.style.display = 'block';
             followUpDiv.style.display = 'block';
+            clearBtn.style.display = 'block';
             
         } catch (error) {
             console.error('Error calling OpenAI API:', error);
@@ -216,6 +250,54 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Scroll to bottom
         chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function restoreConversationUI() {
+        // Clear messages container first
+        messagesDiv.innerHTML = '';
+        
+        // Display all messages from history
+        conversationHistory.forEach(message => {
+            if (message.role === 'user') {
+                const userContent = message.content.find(c => c.type === 'text');
+                if (userContent) {
+                    displayMessage(userContent.text, 'user');
+                }
+            } else if (message.role === 'assistant') {
+                displayMessage(message.content, 'ai');
+            }
+        });
+        
+        // Show chat interface
+        chatContainer.style.display = 'block';
+        followUpDiv.style.display = 'block';
+        clearBtn.style.display = 'block';
+    }
+
+    function saveStateToStorage() {
+        chrome.storage.local.set({
+            currentImageBase64: currentImageBase64,
+            conversationHistory: conversationHistory
+        });
+    }
+
+    function clearConversation() {
+        // Reset variables
+        conversationHistory = [];
+        currentImageBase64 = null;
+        
+        // Clear UI
+        messagesDiv.innerHTML = '';
+        chatContainer.style.display = 'none';
+        followUpDiv.style.display = 'none';
+        clearBtn.style.display = 'none';
+        imageIndicator.style.display = 'none';
+        
+        // Clear storage
+        chrome.storage.local.remove(['currentImageBase64', 'conversationHistory']);
+        
+        // Reset status
+        showStatus('Đã xóa cuộc hội thoại. Sẵn sàng crop ảnh mới.', 'success');
     }
 });
 
