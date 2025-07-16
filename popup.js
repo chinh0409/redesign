@@ -2,6 +2,19 @@ let conversationHistory = [];
 let currentImageBase64 = null;
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Check extension context validity on load
+    try {
+        if (!chrome?.runtime?.id) {
+            console.error('Extension context invalid on popup load');
+            document.body.innerHTML = '<div style="padding: 20px; color: red;">Extension context invalidated. Please reload the extension.</div>';
+            return;
+        }
+    } catch (error) {
+        console.error('Error checking extension context:', error);
+        document.body.innerHTML = '<div style="padding: 20px; color: red;">Extension error. Please reload the extension.</div>';
+        return;
+    }
+
     const apiKeyInput = document.getElementById('apiKey');
     const cropBtn = document.getElementById('cropBtn');
     const clearBtn = document.getElementById('clearBtn');
@@ -13,12 +26,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const followUpText = document.getElementById('followUpText');
     const sendBtn = document.getElementById('sendBtn');
 
-    // Load saved data
-    chrome.storage.sync.get(['openai_api_key'], function(result) {
-        if (result.openai_api_key) {
-            apiKeyInput.value = result.openai_api_key;
-        }
-    });
+    // Load saved data with context check
+    try {
+        chrome.storage.sync.get(['openai_api_key'], function(result) {
+            if (chrome.runtime.lastError) {
+                console.warn('Error loading API key:', chrome.runtime.lastError.message);
+                return;
+            }
+            if (result.openai_api_key) {
+                apiKeyInput.value = result.openai_api_key;
+            }
+        });
+    } catch (error) {
+        console.error('Error accessing storage:', error);
+        showStatus('Extension context error. Please reload extension.', 'error');
+    }
 
     // Load saved conversation and image
     chrome.storage.local.get(['currentImageBase64', 'conversationHistory'], function(result) {
@@ -46,6 +68,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Crop button click
     cropBtn.addEventListener('click', function() {
+        if (!checkExtensionContext()) return;
+        
         if (!apiKeyInput.value.trim()) {
             showStatus('Vui lòng nhập OpenAI API key!', 'error');
             return;
@@ -246,6 +270,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function sendFollowUpMessage(message) {
+        if (!checkExtensionContext()) return;
+        
         if (!currentImageBase64) {
             showStatus('Không có ảnh để tiếp tục hội thoại', 'error');
             return;
@@ -302,7 +328,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function checkExtensionContext() {
+        try {
+            if (!chrome?.runtime?.id) {
+                throw new Error('Extension context invalidated');
+            }
+            return true;
+        } catch (error) {
+            console.error('Extension context check failed:', error);
+            showStatus('Extension bị lỗi. Vui lòng reload extension tại chrome://extensions/', 'error');
+            // Disable all buttons
+            cropBtn.disabled = true;
+            clearBtn.disabled = true;
+            sendBtn.disabled = true;
+            return false;
+        }
+    }
+
     function clearConversation() {
+        if (!checkExtensionContext()) return;
+        
         // Reset variables
         conversationHistory = [];
         currentImageBase64 = null;
@@ -329,5 +374,15 @@ document.addEventListener('DOMContentLoaded', function() {
 // Function to be injected into the content script
 function initializeCropTool() {
     console.log('Initializing crop tool...');
-    window.postMessage({type: 'INIT_CROP_TOOL'}, '*');
+    
+    // Check if extension context is still valid
+    try {
+        if (!chrome?.runtime?.id) {
+            console.error('Extension context invalidated in injected script');
+            return;
+        }
+        window.postMessage({type: 'INIT_CROP_TOOL'}, '*');
+    } catch (error) {
+        console.error('Error in initializeCropTool:', error);
+    }
 }
