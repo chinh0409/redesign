@@ -7,7 +7,8 @@
       "activeTab",
       "storage",
       "scripting",
-      "tabs"
+      "tabs",
+      "desktopCapture"
     ],
     "action": {
       "default_popup": "popup.html",

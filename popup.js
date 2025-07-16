@@ -37,15 +37,31 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get current tab and inject crop functionality
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
             if (tabs[0]) {
+                // Check if tab URL is accessible
+                if (tabs[0].url.startsWith('chrome://') || tabs[0].url.startsWith('chrome-extension://')) {
+                    showStatus('Không thể crop trên trang này. Vui lòng thử trên trang web khác.', 'error');
+                    return;
+                }
+
                 chrome.scripting.executeScript({
                     target: {tabId: tabs[0].id},
                     function: initializeCropTool
                 }, (result) => {
                     if (chrome.runtime.lastError) {
                         console.error('Script injection failed:', chrome.runtime.lastError);
-                        showStatus('Lỗi khởi tạo: ' + chrome.runtime.lastError.message, 'error');
+                        showStatus('Lỗi khởi tạo: ' + chrome.runtime.lastError.message + '. Thử refresh trang và thử lại.', 'error');
+                    } else {
+                        console.log('Script injection successful');
+                        // Set timeout to check if crop tool responds
+                        setTimeout(() => {
+                            if (statusDiv.querySelector('.loading')) {
+                                showStatus('Crop tool không phản hồi. Vui lòng thử lại.', 'error');
+                            }
+                        }, 5000);
                     }
                 });
+            } else {
+                showStatus('Không tìm thấy tab hiện tại', 'error');
             }
         });
     });
@@ -72,6 +88,8 @@ document.addEventListener('DOMContentLoaded', function() {
             handleCroppedImage(request.imageData);
         } else if (request.action === 'cropCancelled') {
             showStatus('Crop đã bị hủy', 'error');
+        } else if (request.action === 'overlayCreating') {
+            showStatus('Crop tool đã sẵn sàng! Chọn vùng cần crop trên màn hình.', 'success');
         }
     });
 

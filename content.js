@@ -33,8 +33,17 @@ function startScreenCapture() {
     isProcessing = true;
     showLoadingMessage('Đang chụp màn hình...');
     
-    // Request screenshot from background script
+    // Request screenshot from background script with timeout
+    const timeoutId = setTimeout(() => {
+        console.error('Screenshot timeout');
+        hideLoadingMessage();
+        isProcessing = false;
+        chrome.runtime.sendMessage({action: 'cropCancelled'});
+    }, 10000); // 10 second timeout
+
     chrome.runtime.sendMessage({action: 'takeScreenshot'}, (response) => {
+        clearTimeout(timeoutId);
+        
         if (chrome.runtime.lastError) {
             console.error('Runtime error:', chrome.runtime.lastError);
             hideLoadingMessage();
@@ -44,6 +53,7 @@ function startScreenCapture() {
         }
         
         if (response && response.success && response.dataUrl) {
+            console.log('Screenshot received, size:', response.dataUrl.length);
             screenshotDataUrl = response.dataUrl;
             hideLoadingMessage();
             initializeSelectionOverlay();
@@ -100,6 +110,11 @@ function initializeSelectionOverlay() {
     
     console.log('Creating selection overlay...');
     
+    // Send message to popup that overlay is being created
+    chrome.runtime.sendMessage({action: 'overlayCreating'}).catch(() => {
+        console.log('Popup not available to receive overlayCreating message');
+    });
+    
     // Create overlay
     overlay = document.createElement('div');
     overlay.id = 'cropperOverlay';
@@ -110,7 +125,7 @@ function initializeSelectionOverlay() {
         width: 100vw !important;
         height: 100vh !important;
         background: rgba(0, 0, 0, 0.4) !important;
-        z-index: 2147483646 !important;
+        z-index: 2147483647 !important;
         cursor: crosshair !important;
         user-select: none !important;
         box-sizing: border-box !important;
