@@ -103,19 +103,28 @@ document.addEventListener('DOMContentLoaded', function() {
                         chrome.scripting.executeScript({
                             target: {tabId: tabs[0].id},
                             function: initializeCropTool
-                        }, (result) => {
+                        }, async (result) => {
                             if (chrome.runtime.lastError) {
                                 console.error('Script injection failed:', chrome.runtime.lastError);
                                 showStatus('Lỗi khởi tạo: ' + chrome.runtime.lastError.message + '. Thử refresh trang và thử lại.', 'error');
-                            } else {
-                                console.log('Script injection successful');
-                                // Set timeout to check if crop tool responds
-                                setTimeout(() => {
+                                return;
+                            } 
+                            
+                            console.log('Script injection successful');
+                            
+                            // Wait a moment for content script to initialize
+                            setTimeout(async () => {
+                                try {
+                                    // Try to send a message to content script to verify it's working
+                                    await safeSendMessageFromPopup(tabs[0].id, { action: 'ping' }, { timeout: 3000 });
+                                    console.log('Content script is responsive');
+                                } catch (error) {
+                                    console.warn('Content script not responsive:', error.message);
                                     if (statusDiv.querySelector('.loading')) {
-                                        showStatus('Crop tool không phản hồi. Vui lòng thử lại.', 'error');
+                                        showStatus('Crop tool không phản hồi. Vui lòng refresh trang và thử lại.', 'error');
                                     }
-                                }, 5000);
-                            }
+                                }
+                            }, 1000);
                         });
                     } catch (error) {
                         showStatus('Lỗi inject script: ' + error.message, 'error');
@@ -181,13 +190,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // Listen for messages from content script
     try {
         chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-            if (request.action === 'imageCropped') {
-                handleCroppedImage(request.imageData);
-            } else if (request.action === 'cropCancelled') {
-                showStatus('Crop đã bị hủy', 'error');
-            } else if (request.action === 'overlayCreating') {
-                showStatus('Crop tool đã sẵn sàng! Chọn vùng cần crop trên màn hình.', 'success');
+            console.log('Popup received message:', request.action);
+            
+            try {
+                if (request.action === 'imageCropped') {
+                    handleCroppedImage(request.imageData);
+                    sendResponse({ success: true, received: true });
+                } else if (request.action === 'cropCancelled') {
+                    showStatus('Crop đã bị hủy', 'error');
+                    sendResponse({ success: true, received: true });
+                } else if (request.action === 'overlayCreating') {
+                    showStatus('Crop tool đã sẵn sàng! Chọn vùng cần crop trên màn hình.', 'success');
+                    sendResponse({ success: true, received: true });
+                } else {
+                    console.warn('Unknown action in popup:', request.action);
+                    sendResponse({ success: false, error: 'Unknown action' });
+                }
+            } catch (error) {
+                console.error('Error handling message in popup:', error);
+                sendResponse({ success: false, error: error.message });
             }
+            
+            return true; // Keep message channel open
         });
     } catch (error) {
         console.warn('Could not add message listener:', error.message);
@@ -391,6 +415,47 @@ document.addEventListener('DOMContentLoaded', function() {
             restartBtn.disabled = true;
             return false;
         }
+    }
+
+    // Helper function to safely send messages from popup
+    function safeSendMessageFromPopup(tabId, message, options = {}) {
+        return new Promise((resolve, reject) => {
+            if (!checkExtensionContext()) {
+                reject(new Error('Extension context invalid'));
+                return;
+            }
+
+            const timeout = setTimeout(() => {
+                reject(new Error('Message timeout'));
+            }, options.timeout || 10000);
+
+            try {
+                if (tabId) {
+                    // Send to specific tab
+                    chrome.tabs.sendMessage(tabId, message, (response) => {
+                        clearTimeout(timeout);
+                        if (chrome.runtime.lastError) {
+                            reject(new Error(chrome.runtime.lastError.message));
+                        } else {
+                            resolve(response || { success: true });
+                        }
+                    });
+                } else {
+                    // Send to runtime
+                    chrome.runtime.sendMessage(message, (response) => {
+                        clearTimeout(timeout);
+                        if (chrome.runtime.lastError) {
+                            reject(new Error(chrome.runtime.lastError.message));
+                        } else {
+                            resolve(response || { success: true });
+                        }
+                    });
+                }
+            } catch (error) {
+                clearTimeout(timeout);
+                reject(error);
+            }
+        });
     }
 
     function clearConversation() {

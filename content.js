@@ -13,28 +13,71 @@ let isProcessing = false;
 let screenshotDataUrl = null;
 let messageListener = null;
 
-// Helper function to safely send messages to extension
-function safeSendMessage(message, callback) {
+// Helper function to safely send messages to extension with retry mechanism
+function safeSendMessage(message, callback, retryCount = 0) {
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 second
+    
     try {
         // Check if chrome runtime exists and is connected
         if (!chrome?.runtime?.id) {
             console.warn('Extension context invalidated - cannot send message:', message);
+            if (callback) callback({ success: false, error: 'Extension context invalidated' });
             return false;
         }
         
-        chrome.runtime.sendMessage(message, (response) => {
-            if (chrome.runtime.lastError) {
-                console.warn('Runtime error sending message:', chrome.runtime.lastError.message);
-                // Don't call callback on error to prevent further issues
-                return;
-            }
-            if (callback && response) {
-                callback(response);
-            }
+        // Create a promise-based approach with timeout
+        const sendMessageWithTimeout = new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error('Message timeout'));
+            }, 5000); // 5 second timeout
+            
+            chrome.runtime.sendMessage(message, (response) => {
+                clearTimeout(timeout);
+                
+                if (chrome.runtime.lastError) {
+                    const errorMsg = chrome.runtime.lastError.message;
+                    console.warn('Runtime error sending message:', errorMsg);
+                    
+                    // Check if this is a recoverable error
+                    if (errorMsg.includes('port closed') || errorMsg.includes('context invalidated')) {
+                        reject(new Error(errorMsg));
+                    } else {
+                        resolve({ success: false, error: errorMsg });
+                    }
+                } else {
+                    resolve(response || { success: true });
+                }
+            });
         });
+        
+        sendMessageWithTimeout
+            .then(response => {
+                if (callback) callback(response);
+            })
+            .catch(error => {
+                console.warn('Error in safeSendMessage:', error.message);
+                
+                // Retry logic for recoverable errors
+                if (retryCount < maxRetries && 
+                    (error.message.includes('port closed') || 
+                     error.message.includes('timeout') || 
+                     error.message.includes('context invalidated'))) {
+                    
+                    console.log(`Retrying message send (attempt ${retryCount + 1}/${maxRetries})`);
+                    setTimeout(() => {
+                        safeSendMessage(message, callback, retryCount + 1);
+                    }, retryDelay * (retryCount + 1));
+                } else {
+                    // Max retries reached or non-recoverable error
+                    if (callback) callback({ success: false, error: error.message });
+                }
+            });
+        
         return true;
     } catch (error) {
         console.warn('Error sending message:', error.message);
+        if (callback) callback({ success: false, error: error.message });
         return false;
     }
 }
@@ -111,6 +154,12 @@ function setupMessageListener() {
                 console.warn('Extension context invalid during startCrop');
                 sendResponse({success: false, error: 'Extension context invalid'});
             }
+        } else if (request.action === 'ping') {
+            console.log('Received ping from popup');
+            sendResponse({success: true, status: 'alive'});
+        } else {
+            console.warn('Unknown action received in content script:', request.action);
+            sendResponse({success: false, error: 'Unknown action'});
         }
         return true; // Keep channel open for async response
     };
@@ -156,8 +205,24 @@ function startScreenCapture() {
     safeSendMessage({action: 'takeScreenshot'}, (response) => {
         clearTimeout(timeoutId);
         
-        if (!response || !response.success || !response.dataUrl) {
-            console.error('Failed to get screenshot:', response);
+        if (!response) {
+            console.error('No response received for screenshot');
+            hideLoadingMessage();
+            isProcessing = false;
+            safeSendMessage({action: 'cropCancelled'});
+            return;
+        }
+        
+        if (!response.success) {
+            console.error('Screenshot failed:', response.error || 'Unknown error');
+            hideLoadingMessage();
+            isProcessing = false;
+            safeSendMessage({action: 'cropCancelled'});
+            return;
+        }
+        
+        if (!response.dataUrl) {
+            console.error('No screenshot data received');
             hideLoadingMessage();
             isProcessing = false;
             safeSendMessage({action: 'cropCancelled'});
