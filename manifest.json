@@ -1,0 +1,29 @@
+{
+    "manifest_version": 3,
+    "name": "AI Screen Crop",
+    "version": "1.0",
+    "description": "Crop images from screen and process with OpenAI",
+    "permissions": [
+      "activeTab",
+      "storage",
+      "scripting",
+      "tabs"
+    ],
+    "action": {
+      "default_popup": "popup.html",
+      "default_title": "AI Screen Crop"
+    },
+    "background": {
+      "service_worker": "background.js"
+    },
+    "content_scripts": [
+      {
+        "matches": ["<all_urls>"],
+        "js": ["content.js"],
+        "css": ["content.css"]
+      }
+    ],
+    "host_permissions": [
+      "https://api.openai.com/*"
+    ]
+  }

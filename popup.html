@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Screen Crop</title>
+    <style>
+        body {
+            width: 400px;
+            min-height: 500px;
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .api-key-section {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input[type="password"], input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        input[type="password"]::placeholder, input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .crop-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+        }
+        
+        .crop-btn:hover {
+            background: linear-gradient(45deg, #ee5a52, #ff6b6b);
+        }
+        
+        .chat-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 15px 0;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 8px;
+            line-height: 1.4;
+        }
+        
+        .user-message {
+            background: rgba(100, 149, 237, 0.3);
+            text-align: right;
+        }
+        
+        .ai-message {
+            background: rgba(144, 238, 144, 0.3);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ffcccc;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: rgba(0, 255, 0, 0.2);
+            color: #ccffcc;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .follow-up {
+            margin-top: 15px;
+        }
+        
+        .follow-up textarea {
+            width: 100%;
+            min-height: 60px;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        .follow-up textarea::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .send-btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            margin-top: 10px;
+        }
+        
+        .send-btn:hover {
+            background: linear-gradient(45deg, #45a049, #4CAF50);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ AI Screen Crop</h1>
+        
+        <div class="api-key-section">
+            <label for="apiKey">OpenAI API Key:</label>
+            <input type="password" id="apiKey" placeholder="Nhập API key của bạn...">
+        </div>
+        
+        <button id="cropBtn" class="crop-btn">📸 Crop Ảnh Từ Màn Hình</button>
+        
+        <div id="status"></div>
+        
+        <div id="chatContainer" class="chat-container" style="display: none;">
+            <div id="messages"></div>
+        </div>
+        
+        <div id="followUp" class="follow-up" style="display: none;">
+            <textarea id="followUpText" placeholder="Đặt câu hỏi hoặc yêu cầu thêm về ảnh..."></textarea>
+            <button id="sendBtn" class="send-btn">💬 Gửi Tin Nhắn</button>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

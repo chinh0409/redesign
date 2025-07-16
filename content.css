@@ -1,0 +1,61 @@
+/* AI Screen Crop - Content Styles */
+
+#cropperOverlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    z-index: 2147483646 !important;
+    cursor: crosshair !important;
+    user-select: none !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    outline: none !important;
+}
+
+#cropperOverlay * {
+    box-sizing: border-box !important;
+}
+
+#cropperOverlay img {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    pointer-events: none !important;
+    object-fit: cover !important;
+    opacity: 0.8 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+}
+
+#cropperOverlay div[style*="position: absolute"][style*="border: 2px dashed"] {
+    position: absolute !important;
+    border: 2px dashed #00ff00 !important;
+    background: rgba(0, 255, 0, 0.1) !important;
+    z-index: 2147483647 !important;
+    pointer-events: none !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Ensure overlay is always on top */
+#cropperOverlay {
+    z-index: 2147483646 !important;
+}
+
+/* Instructions and buttons */
+#cropperOverlay div[style*="background: rgba(0, 0, 0, 0.8)"] {
+    z-index: 2147483647 !important;
+}
+
+#cropperOverlay button {
+    z-index: 2147483647 !important;
+}
