@@ -133,20 +133,23 @@ document.addEventListener('DOMContentLoaded', function() {
         // Listen for messages from content script
         try {
             chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-                console.log('Received message:', request.action);
+                console.log('Popup received message:', request.action);
                 
+                // Only handle specific popup messages
                 switch (request.action) {
                     case 'imageCropped':
                         handleCroppedImage(request.imageData);
-                        break;
+                        return true; // Handled by popup
                     case 'cropCancelled':
                         showStatus('Crop đã bị hủy', 'error');
-                        break;
+                        return true; // Handled by popup
                     case 'overlayCreating':
                         showStatus('Crop tool đã sẵn sàng! Chọn vùng cần crop trên màn hình.', 'success');
-                        break;
+                        return true; // Handled by popup
                     default:
-                        console.warn('Unknown message action:', request.action);
+                        // Don't handle other messages in popup - let background script handle them
+                        console.log('Message not for popup, ignoring:', request.action);
+                        return; // Don't return true/false to let other listeners handle
                 }
             });
         } catch (error) {

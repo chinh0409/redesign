@@ -34,19 +34,25 @@ if (window.AI_SCREEN_CROP_INJECTED) {
                 return false;
             }
             
+            console.log('Content script sending message:', message.action);
+            
             chrome.runtime.sendMessage(message, (response) => {
                 if (chrome.runtime.lastError) {
-                    console.warn('Runtime error sending message:', chrome.runtime.lastError.message);
+                    console.warn('Runtime error sending message:', message.action, chrome.runtime.lastError.message);
                     // Don't call callback on error to prevent further issues
                     return;
                 }
-                if (callback && response) {
+                
+                console.log('Content script got response for:', message.action, response);
+                
+                if (callback) {
+                    // Always call callback, even if response is null/undefined
                     callback(response);
                 }
             });
             return true;
         } catch (error) {
-            console.warn('Error sending message:', error.message);
+            console.warn('Error sending message:', message.action, error.message);
             return false;
         }
     }
@@ -217,10 +223,20 @@ if (window.AI_SCREEN_CROP_INJECTED) {
             safeSendMessage({action: 'cropCancelled'});
         }, 10000); // 10 second timeout
 
-        safeSendMessage({action: 'takeScreenshot'}, (response) => {
+        console.log('Content script sending takeScreenshot message...');
+        const messageSent = safeSendMessage({action: 'takeScreenshot'}, (response) => {
             clearTimeout(timeoutId);
+            console.log('Content script received screenshot response:', response);
             handleScreenshotResponse(response);
         });
+        
+        if (!messageSent) {
+            console.error('Failed to send takeScreenshot message');
+            clearTimeout(timeoutId);
+            hideLoadingMessage();
+            isProcessing = false;
+            safeSendMessage({action: 'cropCancelled'});
+        }
     }
 
     function handleScreenshotResponse(response) {

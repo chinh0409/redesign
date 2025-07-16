@@ -1,7 +1,10 @@
 // Background script for handling screen capture and message passing
 try {
     chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+        console.log('Background received message:', request.action);
+        
         if (request.action === 'takeScreenshot') {
+            console.log('Processing takeScreenshot request...');
             // Capture screenshot of current tab
             try {
                 chrome.tabs.captureVisibleTab(null, {
@@ -36,26 +39,9 @@ try {
                 });
             }
             return true; // Keep the message channel open for async response
-        } else if (request.action === 'imageCropped') {
-            // Forward the message to popup if it's open
-            try {
-                chrome.runtime.sendMessage(request).catch(() => {
-                    // Popup might not be open, that's okay
-                    console.log('Popup not available to receive imageCropped message');
-                });
-            } catch (error) {
-                console.warn('Error forwarding imageCropped message:', error.message);
-            }
-        } else if (request.action === 'cropCancelled') {
-            // Forward the message to popup if it's open
-            try {
-                chrome.runtime.sendMessage(request).catch(() => {
-                    // Popup might not be open, that's okay
-                    console.log('Popup not available to receive cropCancelled message');
-                });
-            } catch (error) {
-                console.warn('Error forwarding cropCancelled message:', error.message);
-            }
+        } else {
+            console.log('Background script ignoring action:', request.action);
+            return; // Don't handle other actions in background
         }
     });
 } catch (error) {
