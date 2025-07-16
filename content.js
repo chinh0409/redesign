@@ -91,9 +91,15 @@ function isExtensionContextValid() {
     }
 }
 
-// Cleanup function to remove listeners and overlays
+// Enhanced cleanup function to remove listeners and overlays
 function cleanupExtensionResources() {
     console.log('Cleaning up extension resources...');
+    
+    // Stop context monitoring
+    if (contextCheckInterval) {
+        clearInterval(contextCheckInterval);
+        contextCheckInterval = null;
+    }
     
     // Remove message listener
     if (messageListener && chrome.runtime && chrome.runtime.onMessage) {
@@ -108,13 +114,25 @@ function cleanupExtensionResources() {
     // Cleanup UI
     cleanup();
     
+    // Remove any context lost messages
+    const contextLostElement = document.getElementById('ai-screen-crop-context-lost');
+    if (contextLostElement) {
+        contextLostElement.remove();
+    }
+    
     // Reset variables
     isProcessing = false;
     screenshotDataUrl = null;
+    contextRecoveryAttempts = 0;
+    
+    // Remove window listeners
+    window.removeEventListener('message', handleWindowMessage);
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.removeEventListener('error', handleWindowError);
 }
 
-// Listen for messages from popup
-window.addEventListener('message', function(event) {
+// Separate handlers for better cleanup
+function handleWindowMessage(event) {
     if (event.data.type === 'INIT_CROP_TOOL') {
         console.log('Received INIT_CROP_TOOL message');
         if (isExtensionContextValid()) {
@@ -123,7 +141,22 @@ window.addEventListener('message', function(event) {
             console.warn('Extension context invalid, cannot start screen capture');
         }
     }
-});
+}
+
+function handleBeforeUnload() {
+    console.log('Page unloading, cleaning up extension resources...');
+    cleanupExtensionResources();
+}
+
+function handleWindowError(event) {
+    if (event.error && event.error.message && event.error.message.includes('Extension context invalidated')) {
+        console.warn('Extension context invalidated detected, cleaning up...');
+        cleanupExtensionResources();
+    }
+}
+
+// Listen for messages from popup using the handler
+window.addEventListener('message', handleWindowMessage);
 
 // Setup message listener from extension
 function setupMessageListener() {
@@ -562,26 +595,108 @@ document.addEventListener('visibilitychange', function() {
     }
 });
 
-window.addEventListener('beforeunload', function() {
-    console.log('Page unloading, cleaning up extension resources...');
-    cleanupExtensionResources();
-});
+// Use the handlers for better cleanup
+window.addEventListener('beforeunload', handleBeforeUnload);
+window.addEventListener('error', handleWindowError);
 
-// Handle extension context invalidation
-window.addEventListener('error', function(event) {
-    if (event.error && event.error.message && event.error.message.includes('Extension context invalidated')) {
-        console.warn('Extension context invalidated detected, cleaning up...');
-        cleanupExtensionResources();
-    }
-});
+// Enhanced periodic context check with recovery
+let contextCheckInterval = null;
+let contextRecoveryAttempts = 0;
+const MAX_RECOVERY_ATTEMPTS = 5;
 
-// Periodic context check (every 30 seconds)
-setInterval(() => {
-    if (!isExtensionContextValid() && messageListener) {
-        console.warn('Extension context lost, cleaning up...');
-        cleanupExtensionResources();
+function startContextMonitoring() {
+    if (contextCheckInterval) {
+        clearInterval(contextCheckInterval);
     }
-}, 30000);
+    
+    contextCheckInterval = setInterval(() => {
+        if (!isExtensionContextValid()) {
+            if (messageListener) {
+                console.warn('Extension context lost during monitoring, cleaning up...');
+                cleanupExtensionResources();
+                
+                // Attempt recovery
+                attemptContextRecovery();
+            }
+        } else {
+            // Reset recovery attempts when context is valid
+            contextRecoveryAttempts = 0;
+        }
+    }, 10000); // Check every 10 seconds for better responsiveness
+}
+
+function attemptContextRecovery() {
+    contextRecoveryAttempts++;
+    console.log(`Attempting context recovery (${contextRecoveryAttempts}/${MAX_RECOVERY_ATTEMPTS})`);
+    
+    if (contextRecoveryAttempts <= MAX_RECOVERY_ATTEMPTS) {
+        // Wait and try to re-establish context
+        setTimeout(() => {
+            if (isExtensionContextValid()) {
+                console.log('✅ Extension context recovered successfully');
+                setupMessageListener();
+                contextRecoveryAttempts = 0;
+            } else {
+                console.log(`❌ Recovery attempt ${contextRecoveryAttempts} failed`);
+                if (contextRecoveryAttempts >= MAX_RECOVERY_ATTEMPTS) {
+                    console.error('Max recovery attempts reached. Extension needs manual reload.');
+                    showContextLostMessage();
+                } else {
+                    attemptContextRecovery();
+                }
+            }
+        }, 2000 * contextRecoveryAttempts); // Exponential backoff
+    }
+}
+
+function showContextLostMessage() {
+    // Show a persistent message to user about context loss
+    const contextLostDiv = document.createElement('div');
+    contextLostDiv.id = 'ai-screen-crop-context-lost';
+    contextLostDiv.style.cssText = `
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+        background: #ff4444 !important;
+        color: white !important;
+        padding: 15px 20px !important;
+        border-radius: 8px !important;
+        z-index: 2147483647 !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        font-size: 14px !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+        max-width: 300px !important;
+        cursor: pointer !important;
+    `;
+    contextLostDiv.innerHTML = `
+        <strong>AI Screen Crop Extension</strong><br>
+        Extension context lost. Click để reload extension.
+    `;
+    
+    contextLostDiv.addEventListener('click', () => {
+        // Try to reload extension or redirect to extensions page
+        try {
+            if (chrome?.runtime?.reload) {
+                chrome.runtime.reload();
+            }
+        } catch (e) {
+            window.open('chrome://extensions/', '_blank');
+        }
+        contextLostDiv.remove();
+    });
+    
+    document.body.appendChild(contextLostDiv);
+    
+    // Auto remove after 30 seconds
+    setTimeout(() => {
+        if (contextLostDiv.parentNode) {
+            contextLostDiv.remove();
+        }
+    }, 30000);
+}
+
+// Start monitoring
+startContextMonitoring();
 
 // Log ready state
 console.log('AI Screen Crop content script loaded successfully');

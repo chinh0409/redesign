@@ -2,18 +2,62 @@ let conversationHistory = [];
 let currentImageBase64 = null;
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Check extension context validity on load
-    try {
-        if (!chrome?.runtime?.id) {
-            console.error('Extension context invalid on popup load');
-            document.body.innerHTML = '<div style="padding: 20px; color: red;">Extension context invalidated. Please reload the extension.</div>';
-            return;
+    // Enhanced extension context check with recovery
+    function checkAndRecoverContext() {
+        try {
+            if (!chrome?.runtime?.id) {
+                console.error('Extension context invalid on popup load');
+                showContextLostUI();
+                return false;
+            }
+            return true;
+        } catch (error) {
+            console.error('Error checking extension context:', error);
+            showContextLostUI();
+            return false;
         }
-    } catch (error) {
-        console.error('Error checking extension context:', error);
-        document.body.innerHTML = '<div style="padding: 20px; color: red;">Extension error. Please reload the extension.</div>';
+    }
+    
+    function showContextLostUI() {
+        document.body.innerHTML = `
+            <div style="padding: 20px; color: white; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; text-align: center;">
+                <h3>🔧 Extension Context Lost</h3>
+                <p>Extension context đã bị mất. Vui lòng:</p>
+                <button onclick="location.reload()" style="margin: 5px; padding: 10px 15px; background: #ff6b6b; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    🔄 Reload Popup
+                </button>
+                <button onclick="window.open('chrome://extensions/', '_blank')" style="margin: 5px; padding: 10px 15px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    ⚙️ Mở Extensions
+                </button>
+                <br><br>
+                <small>Hoặc thử reload extension tại chrome://extensions/</small>
+            </div>
+        `;
+    }
+    
+    // Start context monitoring for popup
+    let popupContextMonitor = null;
+    
+    function startPopupContextMonitoring() {
+        if (popupContextMonitor) {
+            clearInterval(popupContextMonitor);
+        }
+        
+        popupContextMonitor = setInterval(() => {
+            if (!checkAndRecoverContext()) {
+                clearInterval(popupContextMonitor);
+                return;
+            }
+        }, 5000); // Check every 5 seconds
+    }
+    
+    // Initial context check
+    if (!checkAndRecoverContext()) {
         return;
     }
+    
+    // Start monitoring
+    startPopupContextMonitoring();
 
     const apiKeyInput = document.getElementById('apiKey');
     const cropBtn = document.getElementById('cropBtn');
@@ -501,6 +545,24 @@ document.addEventListener('DOMContentLoaded', function() {
             showStatus('❌ Không thể restart extension. Vui lòng thử reload thủ công tại chrome://extensions/', 'error');
         }
     }
+    
+    // Cleanup when popup is closed
+    window.addEventListener('beforeunload', function() {
+        console.log('Popup closing, cleaning up...');
+        if (popupContextMonitor) {
+            clearInterval(popupContextMonitor);
+        }
+    });
+    
+    // Handle visibility change (popup hidden/shown)
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            console.log('Popup hidden');
+        } else {
+            console.log('Popup visible, checking context...');
+            checkAndRecoverContext();
+        }
+    });
 });
 
 // Function to be injected into the content script

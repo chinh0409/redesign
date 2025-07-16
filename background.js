@@ -116,12 +116,75 @@ try {
     console.error('Error setting up background message listener:', error);
 }
 
+// Enhanced service worker lifecycle management
+let serviceWorkerStartTime = Date.now();
+let isServiceWorkerActive = true;
+
 // Handle extension installation
 chrome.runtime.onInstalled.addListener(function(details) {
-    console.log('AI Screen Crop Extension installed');
+    console.log('AI Screen Crop Extension installed', details);
+    serviceWorkerStartTime = Date.now();
+    isServiceWorkerActive = true;
+    
+    // Clear any stale data on fresh install
+    if (details.reason === 'install') {
+        chrome.storage.local.clear();
+        console.log('Cleared storage for fresh install');
+    }
 });
 
 // Handle extension startup
 chrome.runtime.onStartup.addListener(function() {
     console.log('AI Screen Crop Extension started');
+    serviceWorkerStartTime = Date.now();
+    isServiceWorkerActive = true;
 });
+
+// Handle service worker suspension/revival
+chrome.runtime.onSuspend?.addListener(function() {
+    console.log('Service worker suspending...');
+    isServiceWorkerActive = false;
+});
+
+chrome.runtime.onSuspendCanceled?.addListener(function() {
+    console.log('Service worker suspension canceled');
+    isServiceWorkerActive = true;
+});
+
+// Monitor service worker health
+function monitorServiceWorkerHealth() {
+    const currentTime = Date.now();
+    const uptime = currentTime - serviceWorkerStartTime;
+    
+    console.log(`Service worker uptime: ${Math.round(uptime / 1000)}s, Active: ${isServiceWorkerActive}`);
+    
+    // If service worker has been running for too long, it might be stale
+    if (uptime > 300000 && isServiceWorkerActive) { // 5 minutes
+        console.warn('Service worker running for extended time, potential stale state');
+    }
+}
+
+// Health check every 30 seconds
+setInterval(monitorServiceWorkerHealth, 30000);
+
+// Connection tracking
+let activeConnections = new Set();
+
+chrome.runtime.onConnect.addListener(function(port) {
+    console.log('New connection established:', port.name);
+    activeConnections.add(port);
+    
+    port.onDisconnect.addListener(function() {
+        console.log('Connection disconnected:', port.name);
+        activeConnections.delete(port);
+        
+        if (chrome.runtime.lastError) {
+            console.log('Disconnect error:', chrome.runtime.lastError.message);
+        }
+    });
+});
+
+// Periodic connection cleanup
+setInterval(() => {
+    console.log(`Active connections: ${activeConnections.size}`);
+}, 60000);
