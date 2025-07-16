@@ -54,35 +54,48 @@ document.addEventListener('DOMContentLoaded', function() {
         showStatus('Đang khởi tạo crop tool...', 'loading');
         
         // Get current tab and inject crop functionality
-        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            if (tabs[0]) {
-                // Check if tab URL is accessible
-                if (tabs[0].url.startsWith('chrome://') || tabs[0].url.startsWith('chrome-extension://')) {
-                    showStatus('Không thể crop trên trang này. Vui lòng thử trên trang web khác.', 'error');
+        try {
+            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                if (chrome.runtime.lastError) {
+                    showStatus('Lỗi truy cập tab: ' + chrome.runtime.lastError.message, 'error');
                     return;
                 }
-
-                chrome.scripting.executeScript({
-                    target: {tabId: tabs[0].id},
-                    function: initializeCropTool
-                }, (result) => {
-                    if (chrome.runtime.lastError) {
-                        console.error('Script injection failed:', chrome.runtime.lastError);
-                        showStatus('Lỗi khởi tạo: ' + chrome.runtime.lastError.message + '. Thử refresh trang và thử lại.', 'error');
-                    } else {
-                        console.log('Script injection successful');
-                        // Set timeout to check if crop tool responds
-                        setTimeout(() => {
-                            if (statusDiv.querySelector('.loading')) {
-                                showStatus('Crop tool không phản hồi. Vui lòng thử lại.', 'error');
-                            }
-                        }, 5000);
+                
+                if (tabs[0]) {
+                    // Check if tab URL is accessible
+                    if (tabs[0].url.startsWith('chrome://') || tabs[0].url.startsWith('chrome-extension://')) {
+                        showStatus('Không thể crop trên trang này. Vui lòng thử trên trang web khác.', 'error');
+                        return;
                     }
-                });
-            } else {
-                showStatus('Không tìm thấy tab hiện tại', 'error');
-            }
-        });
+
+                    try {
+                        chrome.scripting.executeScript({
+                            target: {tabId: tabs[0].id},
+                            function: initializeCropTool
+                        }, (result) => {
+                            if (chrome.runtime.lastError) {
+                                console.error('Script injection failed:', chrome.runtime.lastError);
+                                showStatus('Lỗi khởi tạo: ' + chrome.runtime.lastError.message + '. Thử refresh trang và thử lại.', 'error');
+                            } else {
+                                console.log('Script injection successful');
+                                // Set timeout to check if crop tool responds
+                                setTimeout(() => {
+                                    if (statusDiv.querySelector('.loading')) {
+                                        showStatus('Crop tool không phản hồi. Vui lòng thử lại.', 'error');
+                                    }
+                                }, 5000);
+                            }
+                        });
+                    } catch (error) {
+                        showStatus('Lỗi inject script: ' + error.message, 'error');
+                    }
+                } else {
+                    showStatus('Không tìm thấy tab hiện tại', 'error');
+                }
+            });
+        } catch (error) {
+            showStatus('Lỗi truy cập Chrome API: ' + error.message, 'error');
+        }
     });
 
     // Send follow-up message
@@ -109,15 +122,19 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Listen for messages from content script
-    chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-        if (request.action === 'imageCropped') {
-            handleCroppedImage(request.imageData);
-        } else if (request.action === 'cropCancelled') {
-            showStatus('Crop đã bị hủy', 'error');
-        } else if (request.action === 'overlayCreating') {
-            showStatus('Crop tool đã sẵn sàng! Chọn vùng cần crop trên màn hình.', 'success');
-        }
-    });
+    try {
+        chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+            if (request.action === 'imageCropped') {
+                handleCroppedImage(request.imageData);
+            } else if (request.action === 'cropCancelled') {
+                showStatus('Crop đã bị hủy', 'error');
+            } else if (request.action === 'overlayCreating') {
+                showStatus('Crop tool đã sẵn sàng! Chọn vùng cần crop trên màn hình.', 'success');
+            }
+        });
+    } catch (error) {
+        console.warn('Could not add message listener:', error.message);
+    }
 
     function showStatus(message, type = 'info') {
         statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
@@ -275,10 +292,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function saveStateToStorage() {
-        chrome.storage.local.set({
-            currentImageBase64: currentImageBase64,
-            conversationHistory: conversationHistory
-        });
+        try {
+            chrome.storage.local.set({
+                currentImageBase64: currentImageBase64,
+                conversationHistory: conversationHistory
+            });
+        } catch (error) {
+            console.warn('Could not save state to storage:', error.message);
+        }
     }
 
     function clearConversation() {
@@ -294,7 +315,11 @@ document.addEventListener('DOMContentLoaded', function() {
         imageIndicator.style.display = 'none';
         
         // Clear storage
-        chrome.storage.local.remove(['currentImageBase64', 'conversationHistory']);
+        try {
+            chrome.storage.local.remove(['currentImageBase64', 'conversationHistory']);
+        } catch (error) {
+            console.warn('Could not clear storage:', error.message);
+        }
         
         // Reset status
         showStatus('Đã xóa cuộc hội thoại. Sẵn sàng crop ảnh mới.', 'success');

@@ -5,6 +5,37 @@ let selectionBox = null;
 let isProcessing = false;
 let screenshotDataUrl = null;
 
+// Helper function to safely send messages to extension
+function safeSendMessage(message, callback) {
+    if (!chrome.runtime || !chrome.runtime.sendMessage) {
+        console.warn('Extension context invalidated - cannot send message:', message);
+        return false;
+    }
+    
+    try {
+        chrome.runtime.sendMessage(message, (response) => {
+            if (chrome.runtime.lastError) {
+                console.warn('Runtime error sending message:', chrome.runtime.lastError.message);
+                return;
+            }
+            if (callback) callback(response);
+        });
+        return true;
+    } catch (error) {
+        console.warn('Error sending message:', error.message);
+        return false;
+    }
+}
+
+// Check if extension context is still valid
+function isExtensionContextValid() {
+    try {
+        return !!(chrome.runtime && chrome.runtime.sendMessage);
+    } catch (error) {
+        return false;
+    }
+}
+
 // Listen for messages from popup
 window.addEventListener('message', function(event) {
     if (event.data.type === 'INIT_CROP_TOOL') {
@@ -14,14 +45,16 @@ window.addEventListener('message', function(event) {
 });
 
 // Listen for messages from extension
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'startCrop') {
-        console.log('Received startCrop message from extension');
-        startScreenCapture();
-        sendResponse({success: true});
-    }
-    return true;
-});
+if (isExtensionContextValid()) {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action === 'startCrop') {
+            console.log('Received startCrop message from extension');
+            startScreenCapture();
+            sendResponse({success: true});
+        }
+        return true;
+    });
+}
 
 function startScreenCapture() {
     if (isProcessing) {
@@ -38,31 +71,24 @@ function startScreenCapture() {
         console.error('Screenshot timeout');
         hideLoadingMessage();
         isProcessing = false;
-        chrome.runtime.sendMessage({action: 'cropCancelled'});
+        safeSendMessage({action: 'cropCancelled'});
     }, 10000); // 10 second timeout
 
-    chrome.runtime.sendMessage({action: 'takeScreenshot'}, (response) => {
+    safeSendMessage({action: 'takeScreenshot'}, (response) => {
         clearTimeout(timeoutId);
         
-        if (chrome.runtime.lastError) {
-            console.error('Runtime error:', chrome.runtime.lastError);
-            hideLoadingMessage();
-            isProcessing = false;
-            chrome.runtime.sendMessage({action: 'cropCancelled'});
-            return;
-        }
-        
-        if (response && response.success && response.dataUrl) {
-            console.log('Screenshot received, size:', response.dataUrl.length);
-            screenshotDataUrl = response.dataUrl;
-            hideLoadingMessage();
-            initializeSelectionOverlay();
-        } else {
+        if (!response || !response.success || !response.dataUrl) {
             console.error('Failed to get screenshot:', response);
             hideLoadingMessage();
             isProcessing = false;
-            chrome.runtime.sendMessage({action: 'cropCancelled'});
+            safeSendMessage({action: 'cropCancelled'});
+            return;
         }
+        
+        console.log('Screenshot received, size:', response.dataUrl.length);
+        screenshotDataUrl = response.dataUrl;
+        hideLoadingMessage();
+        initializeSelectionOverlay();
     });
 }
 
@@ -111,9 +137,7 @@ function initializeSelectionOverlay() {
     console.log('Creating selection overlay...');
     
     // Send message to popup that overlay is being created
-    chrome.runtime.sendMessage({action: 'overlayCreating'}).catch(() => {
-        console.log('Popup not available to receive overlayCreating message');
-    });
+    safeSendMessage({action: 'overlayCreating'});
     
     // Create overlay
     overlay = document.createElement('div');
@@ -305,7 +329,7 @@ function handleKeyDown(e) {
 function cancelSelection() {
     console.log('Cancelling selection...');
     cleanup();
-    chrome.runtime.sendMessage({action: 'cropCancelled'});
+    safeSendMessage({action: 'cropCancelled'});
 }
 
 function cleanup() {
@@ -362,7 +386,7 @@ function captureSelectedArea(selection) {
             const base64 = canvas.toDataURL('image/png').split(',')[1];
             
             // Send to popup
-            chrome.runtime.sendMessage({
+            safeSendMessage({
                 action: 'imageCropped',
                 imageData: base64
             });
@@ -374,7 +398,7 @@ function captureSelectedArea(selection) {
             console.error('Error processing image:', error);
             hideLoadingMessage();
             cleanup();
-            chrome.runtime.sendMessage({action: 'cropCancelled'});
+            safeSendMessage({action: 'cropCancelled'});
         }
     };
     
@@ -382,7 +406,7 @@ function captureSelectedArea(selection) {
         console.error('Failed to load screenshot image');
         hideLoadingMessage();
         cleanup();
-        chrome.runtime.sendMessage({action: 'cropCancelled'});
+        safeSendMessage({action: 'cropCancelled'});
     };
 }
 
