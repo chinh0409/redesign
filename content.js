@@ -1,27 +1,139 @@
+// Prevent multiple injections
+if (window.AI_SCREEN_CROP_INJECTED) {
+    console.log('AI Screen Crop script already injected, skipping...');
+} else {
+    window.AI_SCREEN_CROP_INJECTED = true;
+    console.log('AI Screen Crop content script initializing...');
+
 let isSelecting = false;
 let startX, startY, endX, endY;
 let overlay = null;
 let selectionBox = null;
 let isProcessing = false;
 let screenshotDataUrl = null;
+let messageListener = null;
+
+// Helper function to safely send messages to extension
+function safeSendMessage(message, callback) {
+    try {
+        // Check if chrome runtime exists and is connected
+        if (!chrome?.runtime?.id) {
+            console.warn('Extension context invalidated - cannot send message:', message);
+            return false;
+        }
+        
+        chrome.runtime.sendMessage(message, (response) => {
+            if (chrome.runtime.lastError) {
+                console.warn('Runtime error sending message:', chrome.runtime.lastError.message);
+                // Don't call callback on error to prevent further issues
+                return;
+            }
+            if (callback && response) {
+                callback(response);
+            }
+        });
+        return true;
+    } catch (error) {
+        console.warn('Error sending message:', error.message);
+        return false;
+    }
+}
+
+// Check if extension context is still valid
+function isExtensionContextValid() {
+    try {
+        return !!(chrome?.runtime?.id);
+    } catch (error) {
+        return false;
+    }
+}
+
+// Cleanup function to remove listeners and overlays
+function cleanupExtensionResources() {
+    console.log('Cleaning up extension resources...');
+    
+    // Remove message listener
+    if (messageListener && chrome.runtime && chrome.runtime.onMessage) {
+        try {
+            chrome.runtime.onMessage.removeListener(messageListener);
+            messageListener = null;
+        } catch (error) {
+            console.warn('Error removing message listener:', error);
+        }
+    }
+    
+    // Cleanup UI
+    cleanup();
+    
+    // Reset variables
+    isProcessing = false;
+    screenshotDataUrl = null;
+}
 
 // Listen for messages from popup
 window.addEventListener('message', function(event) {
     if (event.data.type === 'INIT_CROP_TOOL') {
         console.log('Received INIT_CROP_TOOL message');
-        startScreenCapture();
+        if (isExtensionContextValid()) {
+            startScreenCapture();
+        } else {
+            console.warn('Extension context invalid, cannot start screen capture');
+        }
     }
 });
 
-// Listen for messages from extension
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'startCrop') {
-        console.log('Received startCrop message from extension');
-        startScreenCapture();
-        sendResponse({success: true});
+// Setup message listener from extension
+function setupMessageListener() {
+    if (!isExtensionContextValid()) {
+        console.warn('Extension context invalid, cannot setup message listener');
+        return;
     }
-    return true;
-});
+    
+    // Remove existing listener if any
+    if (messageListener) {
+        try {
+            chrome.runtime.onMessage.removeListener(messageListener);
+        } catch (error) {
+            console.warn('Error removing old message listener:', error);
+        }
+    }
+    
+    // Create new listener
+    messageListener = (request, sender, sendResponse) => {
+        console.log('Received message:', request.action);
+        
+        if (request.action === 'startCrop') {
+            console.log('Received startCrop message from extension');
+            if (isExtensionContextValid()) {
+                startScreenCapture();
+                sendResponse({success: true});
+            } else {
+                console.warn('Extension context invalid during startCrop');
+                sendResponse({success: false, error: 'Extension context invalid'});
+            }
+        }
+        return true; // Keep channel open for async response
+    };
+    
+    try {
+        chrome.runtime.onMessage.addListener(messageListener);
+        console.log('Message listener setup successfully');
+    } catch (error) {
+        console.error('Error setting up message listener:', error);
+        messageListener = null;
+    }
+}
+
+// Initialize message listener
+setupMessageListener();
+
+// Listen for extension disconnect/reconnect
+if (chrome.runtime && chrome.runtime.onConnect) {
+    chrome.runtime.onConnect.addListener(() => {
+        console.log('Extension reconnected, re-setting up message listener');
+        setupMessageListener();
+    });
+}
 
 function startScreenCapture() {
     if (isProcessing) {
@@ -33,26 +145,29 @@ function startScreenCapture() {
     isProcessing = true;
     showLoadingMessage('Đang chụp màn hình...');
     
-    // Request screenshot from background script
-    chrome.runtime.sendMessage({action: 'takeScreenshot'}, (response) => {
-        if (chrome.runtime.lastError) {
-            console.error('Runtime error:', chrome.runtime.lastError);
-            hideLoadingMessage();
-            isProcessing = false;
-            chrome.runtime.sendMessage({action: 'cropCancelled'});
-            return;
-        }
+    // Request screenshot from background script with timeout
+    const timeoutId = setTimeout(() => {
+        console.error('Screenshot timeout');
+        hideLoadingMessage();
+        isProcessing = false;
+        safeSendMessage({action: 'cropCancelled'});
+    }, 10000); // 10 second timeout
+
+    safeSendMessage({action: 'takeScreenshot'}, (response) => {
+        clearTimeout(timeoutId);
         
-        if (response && response.success && response.dataUrl) {
-            screenshotDataUrl = response.dataUrl;
-            hideLoadingMessage();
-            initializeSelectionOverlay();
-        } else {
+        if (!response || !response.success || !response.dataUrl) {
             console.error('Failed to get screenshot:', response);
             hideLoadingMessage();
             isProcessing = false;
-            chrome.runtime.sendMessage({action: 'cropCancelled'});
+            safeSendMessage({action: 'cropCancelled'});
+            return;
         }
+        
+        console.log('Screenshot received, size:', response.dataUrl.length);
+        screenshotDataUrl = response.dataUrl;
+        hideLoadingMessage();
+        initializeSelectionOverlay();
     });
 }
 
@@ -100,6 +215,9 @@ function initializeSelectionOverlay() {
     
     console.log('Creating selection overlay...');
     
+    // Send message to popup that overlay is being created
+    safeSendMessage({action: 'overlayCreating'});
+    
     // Create overlay
     overlay = document.createElement('div');
     overlay.id = 'cropperOverlay';
@@ -110,7 +228,7 @@ function initializeSelectionOverlay() {
         width: 100vw !important;
         height: 100vh !important;
         background: rgba(0, 0, 0, 0.4) !important;
-        z-index: 2147483646 !important;
+        z-index: 2147483647 !important;
         cursor: crosshair !important;
         user-select: none !important;
         box-sizing: border-box !important;
@@ -290,7 +408,7 @@ function handleKeyDown(e) {
 function cancelSelection() {
     console.log('Cancelling selection...');
     cleanup();
-    chrome.runtime.sendMessage({action: 'cropCancelled'});
+    safeSendMessage({action: 'cropCancelled'});
 }
 
 function cleanup() {
@@ -347,7 +465,7 @@ function captureSelectedArea(selection) {
             const base64 = canvas.toDataURL('image/png').split(',')[1];
             
             // Send to popup
-            chrome.runtime.sendMessage({
+            safeSendMessage({
                 action: 'imageCropped',
                 imageData: base64
             });
@@ -359,7 +477,7 @@ function captureSelectedArea(selection) {
             console.error('Error processing image:', error);
             hideLoadingMessage();
             cleanup();
-            chrome.runtime.sendMessage({action: 'cropCancelled'});
+            safeSendMessage({action: 'cropCancelled'});
         }
     };
     
@@ -367,7 +485,7 @@ function captureSelectedArea(selection) {
         console.error('Failed to load screenshot image');
         hideLoadingMessage();
         cleanup();
-        chrome.runtime.sendMessage({action: 'cropCancelled'});
+        safeSendMessage({action: 'cropCancelled'});
     };
 }
 
@@ -380,11 +498,27 @@ document.addEventListener('visibilitychange', function() {
 });
 
 window.addEventListener('beforeunload', function() {
-    if (overlay) {
-        console.log('Page unloading, cleaning up...');
-        cleanup();
+    console.log('Page unloading, cleaning up extension resources...');
+    cleanupExtensionResources();
+});
+
+// Handle extension context invalidation
+window.addEventListener('error', function(event) {
+    if (event.error && event.error.message && event.error.message.includes('Extension context invalidated')) {
+        console.warn('Extension context invalidated detected, cleaning up...');
+        cleanupExtensionResources();
     }
 });
 
+// Periodic context check (every 30 seconds)
+setInterval(() => {
+    if (!isExtensionContextValid() && messageListener) {
+        console.warn('Extension context lost, cleaning up...');
+        cleanupExtensionResources();
+    }
+}, 30000);
+
 // Log ready state
 console.log('AI Screen Crop content script loaded successfully');
+
+} // End of injection check

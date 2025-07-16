@@ -87,6 +87,14 @@
             background: linear-gradient(45deg, #ee5a52, #ff6b6b);
         }
         
+        .clear-btn {
+            background: linear-gradient(45deg, #ff9500, #ff7700);
+        }
+        
+        .clear-btn:hover {
+            background: linear-gradient(45deg, #ff7700, #ff9500);
+        }
+        
         .chat-container {
             max-height: 300px;
             overflow-y: auto;
@@ -164,6 +172,21 @@
         .send-btn:hover {
             background: linear-gradient(45deg, #45a049, #4CAF50);
         }
+        
+        .image-indicator {
+            margin: 10px 0;
+            padding: 8px 12px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .indicator-text {
+            font-size: 14px;
+            color: #90EE90;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -176,6 +199,11 @@
         </div>
         
         <button id="cropBtn" class="crop-btn">📸 Crop Ảnh Từ Màn Hình</button>
+        <button id="clearBtn" class="clear-btn" style="display: none;">🗑️ Bắt Đầu Mới</button>
+        
+        <div id="imageIndicator" class="image-indicator" style="display: none;">
+            <div class="indicator-text">✅ Đã có ảnh được crop</div>
+        </div>
         
         <div id="status"></div>
         
